@@ -69,6 +69,7 @@ public class ModUpdater {
      */
     public static void initialize() {
         cleanupDisabledJars();
+        cleanupOldVersionJars();
         tryCompletePendingUpdate();
         checkForUpdates();
     }
@@ -118,6 +119,43 @@ public class ModUpdater {
                     });
         } catch (IOException e) {
             System.err.println("[CosmicTeams] Could not scan mods folder for cleanup: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Deletes any {@code cosmic-teams*.jar} files in the mods folder that are
+     * NOT the currently-loaded jar.
+     *
+     * <p>This handles the common Windows case where the shutdown hook successfully
+     * renamed the {@code .pending} jar to {@code .jar} but could not delete the old
+     * jar because the JVM still held a file lock on it.  By the next launch Fabric
+     * has already chosen which version to load, so the old jar's handle is released
+     * and we can safely delete it here.
+     */
+    private static void cleanupOldVersionJars() {
+        Path currentJar = getCurrentJarPath();
+        if (currentJar == null) return; // dev environment — nothing to do
+
+        Path modsDir = getModsDir();
+        try (var stream = Files.list(modsDir)) {
+            stream
+                    .filter(p -> {
+                        String name = p.getFileName().toString().toLowerCase();
+                        // Target only cosmic-teams jar files that aren't the one we loaded
+                        return name.startsWith("cosmic-teams") && name.endsWith(".jar")
+                                && !p.toAbsolutePath().equals(currentJar.toAbsolutePath());
+                    })
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                            System.out.println("[CosmicTeams] Deleted old version jar: " + p.getFileName());
+                        } catch (IOException e) {
+                            System.err.println("[CosmicTeams] Could not delete old version jar '"
+                                    + p.getFileName() + "': " + e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            System.err.println("[CosmicTeams] Could not scan mods folder for old versions: " + e.getMessage());
         }
     }
 
