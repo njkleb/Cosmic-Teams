@@ -306,96 +306,86 @@ public class BeaconHudRenderer {
                                   CosmicTeamsConfig.Settings cfg, int nameColor) {
 
         boolean showName       = !isPreview && !player.isEmpty() && cfg.showNameLabel;
-        // Preview always shows distance so the aim-ping indicator is always useful.
         boolean showDist       = isPreview || cfg.showDistLabel;
         boolean showAge        = !isPreview && cfg.showAgeLabel;
         boolean showSecondLine = showDist || showAge;
 
-        // Early-out before any matrix work if there is nothing to draw.
         if (!showName && !showSecondLine) return;
 
         int lineCount = (showName ? 1 : 0) + (showSecondLine ? 1 : 0);
 
-        // Vector from camera to label anchor in world space
         double dx = wx - camPos.x;
         double dy = wy - camPos.y;
         double dz = wz - camPos.z;
         double camDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (camDist < 0.001) return; // camera is inside the label; skip
+        if (camDist < 0.001) return;
 
-        // Clamp physical render position; scale is derived from renderDist so
-        // apparent pixel size stays constant beyond the clamp point too.
         double renderDist = Math.min(camDist, MAX_RENDER_DIST);
-        double t          = renderDist / camDist; // 0..1 interpolation factor
+        double t          = renderDist / camDist;
         float  scale      = TEXT_SCALE_BASE * (float) renderDist;
 
         ms.push();
 
-        // Step 1: translate to clamped beacon position in camera-view space
         ms.translate(dx * t, dy * t, dz * t);
-
-        // Step 2: billboard — invert the camera rotation so text faces the player.
-        // Must match the rotation applied in render() exactly (pitch first, then yaw).
         ms.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-(camera.getYaw() + 180.0F)));
         ms.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-camera.getPitch()));
-
-        // Step 3: scale with negative Y (vanilla name-tag convention)
         ms.scale(scale, -scale, scale);
 
-        Matrix4f mat     = ms.peek().getPositionMatrix();
-        int      light   = LightmapTextureManager.MAX_LIGHT_COORDINATE; // full brightness
-        float    startY  = -(lineCount * LINE_HEIGHT) / 2f;
+        Matrix4f mat    = ms.peek().getPositionMatrix();
+        int      light  = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+        float    startY = -(lineCount * LINE_HEIGHT) / 2f;
         int      lineIdx = 0;
 
-        // ── Line 1: player name ────────────────────────────────────────────────
+        // Semi-transparent dark backing, faded in sync with the text.
+        // ~55% opacity at full visibility; softens to ~27% at the proximity minimum (fade=0.5).
+        int bg = argb(0x000000, fade * 0.55f);
+
+        // ── Line 1: player name ────────────────────────────────────────────────────
         if (showName) {
             float ty       = startY + lineIdx * LINE_HEIGHT;
             Text  boldName = Text.literal(player).styled(s -> s.withBold(true));
             float nameW    = tr.getWidth(boldName);
             tr.draw(boldName, -nameW / 2f, ty,
-                    argb(nameColor, fade), false,
-                    mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                    argb(nameColor, fade), true,          // shadow = true
+                    mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
             lineIdx++;
         }
 
-        // ── Line 2: distance and/or age ───────────────────────────────────────
+        // ── Line 2: distance and/or age ───────────────────────────────────────────
         if (showSecondLine) {
             float ty = startY + lineIdx * LINE_HEIGHT;
 
             if (isPreview) {
-                // Preview: always show distance, no age.
                 String s = Math.round(dist) + "m";
                 tr.draw(s, -tr.getWidth(s) / 2f, ty,
-                        argb(cfg.labelDistColor, fade), false,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                        argb(cfg.labelDistColor, fade), true,
+                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
 
             } else if (showDist && showAge) {
-                // Both components: "50m • 16s"
+                // Two adjacent draws — their background quads will be flush and read as one strip.
                 String distPart = Math.round(dist) + "m • ";
                 String agePart  = ageSeconds + "s";
                 float  distW    = tr.getWidth(distPart);
                 float  ageW     = tr.getWidth(agePart);
                 float  tx       = -(distW + ageW) / 2f;
-                tr.draw(distPart, tx,          ty,
-                        argb(cfg.labelDistColor, fade), false,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
-                tr.draw(agePart,  tx + distW,  ty,
-                        argb(cfg.labelAgeColor,  fade), false,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                tr.draw(distPart, tx,         ty,
+                        argb(cfg.labelDistColor, fade), true,
+                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
+                tr.draw(agePart,  tx + distW, ty,
+                        argb(cfg.labelAgeColor,  fade), true,
+                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
 
             } else if (showDist) {
-                // Distance only: "50m"
                 String s = Math.round(dist) + "m";
                 tr.draw(s, -tr.getWidth(s) / 2f, ty,
-                        argb(cfg.labelDistColor, fade), false,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                        argb(cfg.labelDistColor, fade), true,
+                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
 
             } else {
-                // Age only: "16s"
                 String s = ageSeconds + "s";
                 tr.draw(s, -tr.getWidth(s) / 2f, ty,
-                        argb(cfg.labelAgeColor, fade), false,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                        argb(cfg.labelAgeColor, fade), true,
+                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
             }
         }
 
