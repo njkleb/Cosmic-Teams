@@ -109,6 +109,9 @@ public class BeaconHudRenderer {
      */
     private static final double MAX_RENDER_DIST = 10.0;
 
+    /** Minimum distance used for scale calculation, preventing text from shrinking when very close. */
+    private static final double MIN_SCALE_DIST = 10.0;
+
     // ── Entry point ───────────────────────────────────────────────────────────
 
     /**
@@ -322,7 +325,7 @@ public class BeaconHudRenderer {
 
         double renderDist = Math.min(camDist, MAX_RENDER_DIST);
         double t          = renderDist / camDist;
-        float  scale      = TEXT_SCALE_BASE * (float) renderDist;
+        float scale = TEXT_SCALE_BASE * (float) Math.max(renderDist, MIN_SCALE_DIST);
 
         ms.push();
 
