@@ -249,10 +249,7 @@ public class ModUpdater {
                     .uri(URI.create(downloadUrl))
                     .GET().build();
             HttpResponse<InputStream> response =
-                    HttpClient.newBuilder()
-                            .followRedirects(HttpClient.Redirect.NORMAL)
-                            .build()
-                            .send(req, HttpResponse.BodyHandlers.ofInputStream());
+                    HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
                 onDownloadFailed(newVersion, downloadUrl);
@@ -373,7 +370,22 @@ public class ModUpdater {
                 .orElse(null);
     }
 
+    /**
+     * Returns the mods folder by looking at where the mod jar was actually loaded
+     * from.  This is correct regardless of launcher — Lunar Client, Prism, CurseForge,
+     * and vanilla all load the jar from their own profile-specific mods folder, so
+     * {@code currentJar.getParent()} is always the right place to write the update.
+     *
+     * <p>Falls back to {@code getGameDir()/mods} only in dev environments where the
+     * mod is loaded from a class directory rather than a jar (getCurrentJarPath()
+     * returns null in that case).
+     */
     private static Path getModsDir() {
+        Path currentJar = getCurrentJarPath();
+        if (currentJar != null) {
+            return currentJar.getParent();
+        }
+        // Dev environment fallback
         return FabricLoader.getInstance().getGameDir().resolve("mods");
     }
 
