@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "cosmic-teams",
+	"version": "${version}",
+	"name": "Cosmic Teams",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/cosmic-teams/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"njkleb.cosmicteams.CosmicTeams"
+		],
+		"client": [
+			"njkleb.cosmicteams.client.CosmicTeamsClient"
+		]
+	},
+	"mixins": [
+		"cosmic-teams.mixins.json",
+		{
+			"config": "cosmic-teams.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

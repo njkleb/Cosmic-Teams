@@ -1,0 +1,10 @@
+{
+  "ping_alert": {
+    "sounds": [
+      {
+        "name": "cosmicteams:ping_alert",
+        "stream": false
+      }
+    ]
+  }
+}
