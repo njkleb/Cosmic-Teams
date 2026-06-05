@@ -365,17 +365,15 @@ public class BeaconHudRenderer {
                         mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
 
             } else if (showDist && showAge) {
-                // Two adjacent draws — their background quads will be flush and read as one strip.
-                String distPart = Math.round(dist) + "m • ";
-                String agePart  = ageSeconds + "s";
-                float  distW    = tr.getWidth(distPart);
-                float  ageW     = tr.getWidth(agePart);
-                float  tx       = -(distW + ageW) / 2f;
-                tr.draw(distPart, tx,         ty,
-                        argb(cfg.labelDistColor, fade), true,
-                        mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
-                tr.draw(agePart,  tx + distW, ty,
-                        argb(cfg.labelAgeColor,  fade), true,
+                // Single draw call → single background quad, no overlap at the join.
+                // Styled colors handle per-span RGB; the draw call's color parameter carries the fade alpha.
+                Text line = Text.literal(Math.round(dist) + "m • ")
+                        .styled(s -> s.withColor(cfg.labelDistColor))
+                        .append(Text.literal(ageSeconds + "s")
+                                .styled(s -> s.withColor(cfg.labelAgeColor)));
+                float lineW = tr.getWidth(line);
+                tr.draw(line, -lineW / 2f, ty,
+                        argb(0xFFFFFF, fade), true,
                         mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, bg, light);
 
             } else if (showDist) {
