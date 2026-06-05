@@ -249,7 +249,10 @@ public class ModUpdater {
                     .uri(URI.create(downloadUrl))
                     .GET().build();
             HttpResponse<InputStream> response =
-                    HttpClient.newHttpClient().send(req, HttpResponse.BodyHandlers.ofInputStream());
+                    HttpClient.newBuilder()
+                            .followRedirects(HttpClient.Redirect.NORMAL)
+                            .build()
+                            .send(req, HttpResponse.BodyHandlers.ofInputStream());
 
             if (response.statusCode() != 200) {
                 onDownloadFailed(newVersion, downloadUrl);
